@@ -1,0 +1,58 @@
+diff --git a/l4/mk/modes.inc b/l4/mk/modes.inc
+index 166bbac..4c54435 100644
+--- a/l4/mk/modes.inc
++++ b/l4/mk/modes.inc
+@@ -42,8 +42,8 @@ LIBC_INCLUDE   = $(BID_NOSTDINC)                            \
+                  -I$(OBJ_BASE)/include/contrib/libstdc++-v3 \
+                  -I$(OBJ_BASE)/include/uclibc               \
+                  $(if $(CONFIG_USE_DROPS_STDDIR),           \
+-                  -I$(DROPS_STDDIR)/include/contrib/libstdc++-v3,) \
+-                  -I$(DROPS_STDDIR)/include/uclibc          \
++                  -I$(DROPS_STDDIR)/include/contrib/libstdc++-v3 \
++                  -I$(DROPS_STDDIR)/include/uclibc,)        \
+                  $(I_GCCINCDIR)
+ 
+ #############################################################################
+diff --git a/l4/pkg/l4re-core/l4re_kernel/server/src/region.cc b/l4/pkg/l4re-core/l4re_kernel/server/src/region.cc
+index 2859597..0cef9b2 100644
+--- a/l4/pkg/l4re-core/l4re_kernel/server/src/region.cc
++++ b/l4/pkg/l4re-core/l4re_kernel/server/src/region.cc
+@@ -23,6 +23,8 @@
+ #include "debug.h"
+ 
+ #include <cstdio>
++#include <l4/util/port_io.h>
++#include <l4/re/env.h>
+ 
+ using L4Re::Rm;
+ using L4Re::Dataspace;
+@@ -178,6 +180,9 @@ Region_map::op_exception(L4::Exception::Rights, l4_exc_regs_t &u,
+            l4_utcb_exc_pfa(&u));
+   w.printf("Global::l4re_aux->ldr_flags=%lx\n", Global::l4re_aux->ldr_flags);
+ 
++  l4util_ioport_map(l4re_env_get_cap("sigma0"), 0x501, 0);
++  l4util_out8(66, 0x501);
++
+   return -L4_ENOREPLY;
+ }
+ 
+diff --git a/l4/pkg/l4re-core/moe/server/src/app_task.cc b/l4/pkg/l4re-core/moe/server/src/app_task.cc
+index a2d22c9..b19f2df 100644
+--- a/l4/pkg/l4re-core/moe/server/src/app_task.cc
++++ b/l4/pkg/l4re-core/moe/server/src/app_task.cc
+@@ -9,6 +9,7 @@
+  */
+ #include "app_task.h"
+ #include "globals.h"
++#include <l4/util/port_io.h>
+ 
+ using L4Re::Dataspace;
+ 
+@@ -25,6 +26,7 @@ App_task::op_signal(L4Re::Parent::Rights, unsigned long sig, unsigned long val)
+           L4::cout << "MOE: task " << this << " exited with " << val
+                    << '\n';
+ 
++        l4util_out8(val, 0x501);
+         return -L4_ENOREPLY;
+       }
+     default: break;

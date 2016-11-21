@@ -1,0 +1,41 @@
+#!/bin/bash
+set -eux
+
+target="$1"
+base="$(mktemp -d)"
+
+rm -f "$target"
+# busybox
+mkdir $base/bin
+cp busybox $base/bin
+cp dropbear $base/bin
+$base/bin/busybox --install $base/bin
+ln -s bin $base/sbin
+
+#boot
+mkdir $base/etc
+echo "::sysinit:/etc/boot" >$base/etc/inittab
+echo "::askfirst:/bin/cttyhack /bin/sh" >>$base/etc/inittab
+cat << EOF > $base/etc/boot
+#! /bin/sh
+set -x
+
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t tmpfs -o size=64k,mode=0755 tmpfs /dev
+mkdir /dev/pts
+mount -t devpts devpts /dev/pts
+sysctl -w kernel.hotplug=/sbin/mdev
+mdev -s
+mount -t tmpfs -o rw tmpfs /tmp
+syslogd -C
+
+. /dev/rom/startup
+#/bin/dropbearmulti dropbear -REF
+EOF
+chmod +x $base/etc/boot
+
+#mountpoints
+mkdir $base/{dev,proc,sys,tmp}
+
+genext2fs -z -q -d $base -b 8000 -N 4000 $target
